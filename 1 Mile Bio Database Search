@@ -1,0 +1,88 @@
+# Load packages 
+import arcpy
+import os
+
+# Set file path for exports to be saved to
+out_kmz_file=r"\\na.aecomnet.com\lfs\AMER\SanDiego-USSDG1\DCS\GIS\Projects\60736282_CVIN\01_data\08_Data_Development\CVIN 1-mile Outputs"
+out_gdb_path=r"\\na.aecomnet.com\lfs\AMER\SanDiego-USSDG1\DCS\GIS\Projects\60736282_CVIN\01_data\ProjectGDB.gdb"
+
+# These 2 lines of code need to be changed each time
+Segment = "86"
+Subsegment= "86" #do not include "."
+
+#Creates KMZ of the SubSegment
+OutputGDB = f"{out_gdb_path}\\Segment{Segment}"
+OutputKMZ = os.path.join(r"\\na.aecomnet.com\lfs\AMER\SanDiego-USSDG1\DCS\GIS\Projects\60736282_CVIN\01_data\07_KMZ\In", f"Seg{Subsegment}" + ".kmz")
+arcpy.conversion.LayerToKML(
+    layer="CVIN Segments",
+    out_kmz_file=OutputKMZ,
+    layer_output_scale=0,
+    is_composite="NO_COMPOSITE",
+    image_size=1024,
+    dpi_of_client=96,
+    ignore_zvalue="CLAMPED_TO_GROUND"
+)
+
+# Define your input layers to run Select by Location tool on 
+input_layers = {r"\\na.aecomnet.com\lfs\AMER\SanDiego-USSDG1\DCS\GIS\Projects\60736282_CVIN\01_data\ProjectGDB.gdb\NHD_Area": "NHDArea",
+                r"\\na.aecomnet.com\lfs\AMER\SanDiego-USSDG1\DCS\GIS\Projects\60736282_CVIN\01_data\ProjectGDB.gdb\NHDFlowline": "NHDFlowline",
+                r"\\na.aecomnet.com\lfs\AMER\SanDiego-USSDG1\DCS\GIS\Projects\60736282_CVIN\01_data\ProjectGDB.gdb\NWI_Wetlands": "NWIWetlands",
+                r"\\na.aecomnet.com\lfs\AMER\SanDiego-USSDG1\DCS\GIS\Projects\60736282_CVIN\01_data\ProjectGDB.gdb\BioDatabaseLayers\USFWS_CriticalHabitat_CA": "USFWSCriticalHabitat",
+                r"\\na.aecomnet.com\lfs\AMER\SanDiego-USSDG1\DCS\GIS\Projects\60736282_CVIN\01_data\ProjectGDB.gdb\BioDatabaseLayers\CNDDB_CA": "CNDDB",
+                r"\\na.aecomnet.com\lfs\AMER\SanDiego-USSDG1\DCS\GIS\Projects\60736282_CVIN\01_data\ProjectGDB.gdb\BioDatabaseLayers\NMFS_CriticalHabitat_Poly_CA": "NMFSCriticalHabitatPoly",
+                r"\\na.aecomnet.com\lfs\AMER\SanDiego-USSDG1\DCS\GIS\Projects\60736282_CVIN\01_data\ProjectGDB.gdb\BioDatabaseLayers\NMFS_CriticalHabitatLine_CA": "NMFSCriticalHabitatLine", 
+                r"\\na.aecomnet.com\lfs\AMER\SanDiego-USSDG1\DCS\GIS\Projects\60736282_CVIN\01_data\ProjectGDB.gdb\BioDatabaseLayers\NOAA_EssentialFishHabitat_CA": "EssentialFishHabitat",
+                r"\\na.aecomnet.com\lfs\AMER\SanDiego-USSDG1\DCS\GIS\Projects\60736282_CVIN\01_data\ProjectGDB.gdb\BioDatabaseLayers\NOAA_EssentialFishHabitat_WestCoast": "EFH_WestCoast",
+                r"\\na.aecomnet.com\lfs\AMER\SanDiego-USSDG1\DCS\GIS\Projects\60736282_CVIN\01_data\ProjectGDB.gdb\BioDatabaseLayers\NOAA_EssentialFishHabitat_HMS": "EFH_WestCoast_HMS",
+                r"\\na.aecomnet.com\lfs\AMER\SanDiego-USSDG1\DCS\GIS\Projects\60736282_CVIN\01_data\ProjectGDB.gdb\BioDatabaseLayers\NOAA_EssentialFishHabitat_Groundfish": "EFH_Groundfish",
+                r"\\na.aecomnet.com\lfs\AMER\SanDiego-USSDG1\DCS\GIS\Projects\60736282_CVIN\01_data\ProjectGDB.gdb\BioDatabaseLayers\NOAA_EssentialFishHabitat_Salmonid": "EFH_Salmonid"}    
+selection_layers = {}
+
+for layer in input_layers:
+    # Create a new selection layer
+    selection_layer = f"{layer}_selection"
+    arcpy.management.MakeFeatureLayer(layer, selection_layer)
+    
+    # Run Select By Location
+    arcpy.management.SelectLayerByLocation(selection_layer,
+                                           "INTERSECT",
+                                           select_features="CVIN Segments",
+                                           search_distance="1 Miles",
+                                           selection_type="NEW_SELECTION",
+                                           invert_spatial_relationship="NOT_INVERT")
+    
+    # Check if there are selected features
+    count = int(arcpy.management.GetCount(selection_layer).getOutput(0))
+    if count > 0:
+        selection_layers[layer] = selection_layer
+    else:
+        print(f"No features selected in {layer}.")
+        arcpy.management.Delete(selection_layer)
+
+# Exports selected records from input layers into feature class
+for layer, selection_layer in selection_layers.items():
+    output_name = input_layers[layer]
+    output_path = f"{OutputGDB}\\Seg{Subsegment}_1mi_{output_name}"
+    
+    arcpy.management.CopyFeatures(selection_layer, output_path)
+    print(f"Exported {selection_layer} to {output_path}")
+
+print("Processing completed.")
+
+# Converts each feature class in the output GDB to KMZ
+arcpy.env.workspace = OutputGDB
+for fc in arcpy.ListFeatureClasses():
+    if fc.startswith(f"Seg{Subsegment}_1mi"):
+        output_kmz = os.path.join(f"{out_kmz_file}", fc + ".kmz")
+        layer_name = f"{fc}_layer"
+        arcpy.MakeFeatureLayer_management(fc, layer_name)
+        arcpy.conversion.LayerToKML(fc,
+                                    output_kmz,
+                                    layer_output_scale=0,
+                                    is_composite="NO_COMPOSITE",
+                                    image_size=1024,
+                                    dpi_of_client=96,
+                                    ignore_zvalue="CLAMPED_TO_GROUND")
+        arcpy.Delete_management(layer_name)
+        print(f"Converted {fc} to KMZ")
+
