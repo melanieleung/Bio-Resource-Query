@@ -1,14 +1,15 @@
 # Load packages 
 import arcpy
 import os
+arcpy.env.overwriteOutput = True
 
 # Set file path for exports to be saved to
 out_kmz_file=r"\\na.aecomnet.com\lfs\AMER\SanDiego-USSDG1\DCS\GIS\Projects\60736282_CVIN\01_data\08_Data_Development\CVIN 1-mile Outputs"
 out_gdb_path=r"\\na.aecomnet.com\lfs\AMER\SanDiego-USSDG1\DCS\GIS\Projects\60736282_CVIN\01_data\ProjectGDB.gdb"
 
-# These 2 lines of code need to be changed each time
-Segment = "86"
-Subsegment= "86" #do not include "."
+# Parameters are set in the geoprocessing pane
+Segment = arcpy.GetParameter(1)
+Subsegment= arcpy.GetParameter(0)
 
 #Creates KMZ of the SubSegment
 OutputGDB = f"{out_gdb_path}\\Segment{Segment}"
@@ -60,6 +61,16 @@ for layer in input_layers:
         arcpy.management.Delete(selection_layer)
 
 # Exports selected records from input layers into feature class
+projectGDB = r"\\na.aecomnet.com\lfs\AMER\SanDiego-USSDG1\DCS\GIS\Projects\60736282_CVIN\01_data\ProjectGDB.gdb"
+featureDataset = f"{projectGDB}\{Segment}"
+
+if not arcpy.Exists(featureDataset):
+    arcpy.management.CreateFeatureDataset(
+    out_dataset_path=projectGDB,
+    out_name=f"Segment{Segment}",
+    spatial_reference='PROJCS["NAD_1983_California_Teale_Albers",GEOGCS["GCS_North_American_1983",DATUM["D_North_American_1983",SPHEROID["GRS_1980",6378137.0,298.257222101]],PRIMEM["Greenwich",0.0],UNIT["Degree",0.0174532925199433]],PROJECTION["Albers"],PARAMETER["False_Easting",0.0],PARAMETER["False_Northing",-4000000.0],PARAMETER["Central_Meridian",-120.0],PARAMETER["Standard_Parallel_1",34.0],PARAMETER["Standard_Parallel_2",40.5],PARAMETER["Latitude_Of_Origin",0.0],UNIT["Meter",1.0]];-16909700 -8597000 10000;-100000 10000;-100000 10000;0.001;0.001;0.001;IsHighPrecision'
+    )
+    
 for layer, selection_layer in selection_layers.items():
     output_name = input_layers[layer]
     output_path = f"{OutputGDB}\\Seg{Subsegment}_1mi_{output_name}"
@@ -73,10 +84,10 @@ print("Processing completed.")
 arcpy.env.workspace = OutputGDB
 for fc in arcpy.ListFeatureClasses():
     if fc.startswith(f"Seg{Subsegment}_1mi"):
-        output_kmz = os.path.join(f"{out_kmz_file}", fc + ".kmz")
+        output_kmz = os.path.join(f"{out_kmz_file}", fc + ".kml")
         layer_name = f"{fc}_layer"
         arcpy.MakeFeatureLayer_management(fc, layer_name)
-        arcpy.conversion.LayerToKML(fc,
+        arcpy.conversion.LayerToKML(layer_name,
                                     output_kmz,
                                     layer_output_scale=0,
                                     is_composite="NO_COMPOSITE",
@@ -85,4 +96,3 @@ for fc in arcpy.ListFeatureClasses():
                                     ignore_zvalue="CLAMPED_TO_GROUND")
         arcpy.Delete_management(layer_name)
         print(f"Converted {fc} to KMZ")
-
