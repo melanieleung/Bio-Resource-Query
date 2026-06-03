@@ -7,15 +7,16 @@ arcpy.env.overwriteOutput = True
 out_kmz_file=r"\\na.aecomnet.com\lfs\AMER\SanDiego-USSDG1\DCS\GIS\Projects\60736282_CVIN\01_data\08_Data_Development\CVIN 1-mile Outputs"
 out_gdb_path=r"\\na.aecomnet.com\lfs\AMER\SanDiego-USSDG1\DCS\GIS\Projects\60736282_CVIN\01_data\ProjectGDB.gdb"
 
-# Parameters are set in the geoprocessing pane
+#The only cell you will need to change inputs for!
 Segment = arcpy.GetParameter(1)
 Subsegment= arcpy.GetParameter(0)
+InputLayer = arcpy.GetParameter(2)
 
 #Creates KMZ of the SubSegment
 OutputGDB = f"{out_gdb_path}\\Segment{Segment}"
 OutputKMZ = os.path.join(r"\\na.aecomnet.com\lfs\AMER\SanDiego-USSDG1\DCS\GIS\Projects\60736282_CVIN\01_data\07_KMZ\In", f"Seg{Subsegment}" + ".kmz")
 arcpy.conversion.LayerToKML(
-    layer="CVIN Segments",
+    layer=InputLayer,
     out_kmz_file=OutputKMZ,
     layer_output_scale=0,
     is_composite="NO_COMPOSITE",
@@ -47,7 +48,7 @@ for layer in input_layers:
     # Run Select By Location
     arcpy.management.SelectLayerByLocation(selection_layer,
                                            "INTERSECT",
-                                           select_features="CVIN Segments",
+                                           select_features=InputLayer  ,
                                            search_distance="1 Miles",
                                            selection_type="NEW_SELECTION",
                                            invert_spatial_relationship="NOT_INVERT")
