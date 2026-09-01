@@ -12,12 +12,40 @@ Segment = arcpy.GetParameter(1)
 Subsegment= arcpy.GetParameter(0)
 InputLayer = arcpy.GetParameter(2)
 SearchDistance = arcpy.GetParameterAsText(3)
+FederalClip = arcpy.GetParameter(4)
 
 Dist = SearchDistance.replace(" ", "")
+
+#Federal lands clipping option enabled:
+if FederalClip:
+    federal_lands_url = r"https://services5.arcgis.com/7weheFjxuNkGGiZi/arcgis/rest/services/USA_Federal_Lands_2025/FeatureServer/0"
+    federal_lands_local = r"memory\federal_lands"
+    arcpy.management.CopyFeatures(
+        federal_lands_url,
+        federal_lands_local
+        )
+    clipped_lines = r"memory\clipped_lines"
+
+    arcpy.analysis.Clip(
+        in_features=InputLayer,
+        clip_features=federal_lands_local,
+        out_feature_class=clipped_lines
+    )
+
+    InputLayer = "clipped_layer"
+    
+    arcpy.AddMessage("Making feature layer from the clipped version of the segment on federal lands...")
+    arcpy.management.MakeFeatureLayer(
+        clipped_lines,
+        InputLayer
+        )
 
 #Creates KMZ of the SubSegment
 OutputGDB = f"{out_gdb_path}\\Segment{Segment}"
 OutputKMZ = os.path.join(r"\\na.aecomnet.com\lfs\AMER\SanDiego-USSDG1\DCS\GIS\Projects\60736282_CVIN\01_data\07_KMZ\In", f"Seg{Subsegment}" + ".kmz")
+
+if FederalClip:
+    OutputKMZ = os.path.join(r"\\na.aecomnet.com\lfs\AMER\SanDiego-USSDG1\DCS\GIS\Projects\60736282_CVIN\01_data\07_KMZ\In", f"Seg{Subsegment}_FederalLands" + ".kmz")
 arcpy.conversion.LayerToKML(
     layer=InputLayer,
     out_kmz_file=OutputKMZ,
@@ -61,7 +89,6 @@ for layer in input_layers:
     if count > 0:
         selection_layers[layer] = selection_layer
     else:
-        print(f"No features selected in {layer}.")
         arcpy.management.Delete(selection_layer)
 
 # Exports selected records from input layers into feature class
@@ -74,21 +101,27 @@ if not arcpy.Exists(featureDataset):
     out_name=f"Segment{Segment}",
     spatial_reference='PROJCS["NAD_1983_California_Teale_Albers",GEOGCS["GCS_North_American_1983",DATUM["D_North_American_1983",SPHEROID["GRS_1980",6378137.0,298.257222101]],PRIMEM["Greenwich",0.0],UNIT["Degree",0.0174532925199433]],PROJECTION["Albers"],PARAMETER["False_Easting",0.0],PARAMETER["False_Northing",-4000000.0],PARAMETER["Central_Meridian",-120.0],PARAMETER["Standard_Parallel_1",34.0],PARAMETER["Standard_Parallel_2",40.5],PARAMETER["Latitude_Of_Origin",0.0],UNIT["Meter",1.0]];-16909700 -8597000 10000;-100000 10000;-100000 10000;0.001;0.001;0.001;IsHighPrecision'
     )
-    
+
+
 for layer, selection_layer in selection_layers.items():
     output_name = input_layers[layer]
     output_path = f"{OutputGDB}\\Seg{Subsegment}_{Dist}_{output_name}"
-    
+    if FederalClip:
+        output_path = f"{OutputGDB}\\Seg{Subsegment}_{Dist}_FederalClip_{output_name}"
     arcpy.management.CopyFeatures(selection_layer, output_path)
     print(f"Exported {selection_layer} to {output_path}")
 
-print("Processing completed.")
-
 # Converts each feature class in the output GDB to KMZ
 arcpy.env.workspace = OutputGDB
+
 for fc in arcpy.ListFeatureClasses():
-    if fc.startswith(f"Seg{Subsegment}_{Dist}"):
+    gdb_prefix = f"Seg{Subsegment}_{Dist}"
+    if FederalClip:
         output_kmz = os.path.join(f"{out_kmz_file}", fc + ".kml")
+        gdb_prefix = f"Seg{Subsegment}_{Dist}_FederalClip"
+    else:
+        output_kmz = os.path.join(f"{out_kmz_file}", fc + ".kml")
+    if fc.startswith(f"{gdb_prefix}"):
         layer_name = f"{fc}_layer"
         arcpy.MakeFeatureLayer_management(fc, layer_name)
         arcpy.conversion.LayerToKML(layer_name,
