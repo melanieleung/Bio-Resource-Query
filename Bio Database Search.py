@@ -112,7 +112,7 @@ if FederalClip:
     for layer, selection_layer in selection_layers.items():
         output_name = input_layers[layer]
         output_path = f"{OutputGDB}\\Seg{Subsegment}_{Dist}_FederalClip_{output_name}"
-    arcpy.management.CopyFeatures(selection_layer, output_path)
+        arcpy.management.CopyFeatures(selection_layer, output_path)
 
     # Converts each feature class in the output GDB to KMZ
     arcpy.env.workspace = OutputGDB
@@ -181,8 +181,8 @@ else:
     for layer, selection_layer in selection_layers.items():
         output_name = input_layers[layer]
         output_path = f"{OutputGDB}\\Seg{Subsegment}_{Dist}_{output_name}"
-    arcpy.management.CopyFeatures(selection_layer, output_path)
-    print(f"Exported {selection_layer} to {output_path}")
+        arcpy.management.CopyFeatures(selection_layer, output_path)
+        print(f"Exported {selection_layer} to {output_path}")
 
     # Converts each feature class in the output GDB to KMZ
     arcpy.env.workspace = OutputGDB
