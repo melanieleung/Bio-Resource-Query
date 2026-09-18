@@ -16,6 +16,7 @@ FederalClip = arcpy.GetParameter(4)
 LandAgency = arcpy.GetParameterAsText(5)
 
 Dist = SearchDistance.replace(" ", "")
+FileNameDist = Dist.replace(".","pt")
 OutputGDB = f"{out_gdb_path}\\Segment{Segment}"
 
 # Define your input layers to run Select by Location tool on 
@@ -52,7 +53,7 @@ if FederalClip:
         federal_lands_local
         )
 
-    clipped_lines = r"memory\clipped_lines"
+    clipped_lines = rf"\\na.aecomnet.com\lfs\AMER\SanDiego-USSDG1\DCS\GIS\Projects\60736282_CVIN\01_data\08_Data_Development\CVIN Bio Query Outputs\SHP\Seg{Segment}_FederalClip.shp"
 
     arcpy.analysis.Clip(
         in_features=InputLayer,
@@ -86,7 +87,7 @@ if FederalClip:
         # Run Select By Location
         arcpy.management.SelectLayerByLocation(selection_layer,
                                                "INTERSECT",
-                                               select_features=InputLayer,
+                                               select_features=ClippedLayer,
                                                search_distance=SearchDistance,
                                                selection_type="NEW_SELECTION",
                                                invert_spatial_relationship="NOT_INVERT")
@@ -111,7 +112,7 @@ if FederalClip:
 
     for layer, selection_layer in selection_layers.items():
         output_name = input_layers[layer]
-        output_path = f"{OutputGDB}\\Seg{Subsegment}_{Dist}_FederalClip_{output_name}"
+        output_path = f"{OutputGDB}\\Seg{Subsegment}_{FileNameDist}_FederalClip_{output_name}"
         arcpy.management.CopyFeatures(selection_layer, output_path)
 
     # Converts each feature class in the output GDB to KMZ
@@ -180,7 +181,7 @@ else:
 
     for layer, selection_layer in selection_layers.items():
         output_name = input_layers[layer]
-        output_path = f"{OutputGDB}\\Seg{Subsegment}_{Dist}_{output_name}"
+        output_path = f"{OutputGDB}\\Seg{Subsegment}_{FileNameDist}_{output_name}"
         arcpy.management.CopyFeatures(selection_layer, output_path)
         print(f"Exported {selection_layer} to {output_path}")
 
