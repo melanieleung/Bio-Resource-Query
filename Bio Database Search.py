@@ -16,6 +16,7 @@ FederalClip = arcpy.GetParameter(4)
 LandAgency = arcpy.GetParameterAsText(5)
 
 Dist = SearchDistance.replace(" ", "")
+FileNameDist = Dist.replace(".","pt")
 OutputGDB = f"{out_gdb_path}\\Segment{Segment}"
 
 # Define your input layers to run Select by Location tool on 
@@ -52,7 +53,7 @@ if FederalClip:
         federal_lands_local
         )
 
-    clipped_lines = r"memory\clipped_lines"
+    clipped_lines = rf"\\na.aecomnet.com\lfs\AMER\SanDiego-USSDG1\DCS\GIS\Projects\60736282_CVIN\01_data\08_Data_Development\CVIN Bio Query Outputs\SHP\Seg{Segment}_FederalClip.shp"
 
     arcpy.analysis.Clip(
         in_features=InputLayer,
@@ -86,7 +87,7 @@ if FederalClip:
         # Run Select By Location
         arcpy.management.SelectLayerByLocation(selection_layer,
                                                "INTERSECT",
-                                               select_features=InputLayer,
+                                               select_features=ClippedLayer,
                                                search_distance=SearchDistance,
                                                selection_type="NEW_SELECTION",
                                                invert_spatial_relationship="NOT_INVERT")
@@ -111,28 +112,23 @@ if FederalClip:
 
     for layer, selection_layer in selection_layers.items():
         output_name = input_layers[layer]
-        output_path = f"{OutputGDB}\\Seg{Subsegment}_{Dist}_FederalClip_{output_name}"
-    arcpy.management.CopyFeatures(selection_layer, output_path)
+        output_path = f"{OutputGDB}\\Seg{Subsegment}_{FileNameDist}_FederalClip_{output_name}"
 
-    # Converts each feature class in the output GDB to KMZ
-    arcpy.env.workspace = OutputGDB
+        arcpy.management.CopyFeatures(selection_layer, output_path)
+        layer_name = f"{output_name}_layer"
 
-    for fc in arcpy.ListFeatureClasses():
-        gdb_prefix = f"Seg{Subsegment}_{Dist}"
-        output_kmz = os.path.join(f"{out_kmz_file}", fc + ".kml")
-        gdb_prefix = f"Seg{Subsegment}_{Dist}_FederalClip"
-    if fc.startswith(f"{gdb_prefix}"):
-        layer_name = f"{fc}_layer"
-        arcpy.MakeFeatureLayer_management(fc, layer_name)
-        arcpy.conversion.LayerToKML(layer_name,
-                                    output_kmz,
-                                    layer_output_scale=0,
-                                    is_composite="NO_COMPOSITE",
-                                    image_size=1024,
-                                    dpi_of_client=96,
-                                    ignore_zvalue="CLAMPED_TO_GROUND")
+        arcpy.MakeFeatureLayer_management(output_path, layer_name)
+        output_kmz = os.path.join(f"{out_kmz_file}", f"Seg{Subsegment}_{FileNameDist}_FederalClip_{output_name}" + ".kml")
+
+        arcpy.conversion.LayerToKML(
+            layer_name,
+            output_kmz,
+            layer_output_scale=0,
+            is_composite="NO_COMPOSITE",
+            dpi_of_client=96,
+            ignore_zvalue="CLAMPED_TO_GROUND"
+            )
         arcpy.Delete_management(layer_name)
-        print(f"Converted {fc} to KMZ")
 
 # Federal Lands clipping option not enabled:
 else:
@@ -167,7 +163,7 @@ else:
         else:
             arcpy.management.Delete(selection_layer)
             
-    # Exports selected records from input layers into feature class
+    # Exports selected records from input layers into feature class and then into KML
     projectGDB = r"\\na.aecomnet.com\lfs\AMER\SanDiego-USSDG1\DCS\GIS\Projects\60736282_CVIN\01_data\ProjectGDB.gdb"
     featureDataset = f"{projectGDB}\{Segment}"
 
@@ -180,26 +176,20 @@ else:
 
     for layer, selection_layer in selection_layers.items():
         output_name = input_layers[layer]
-        output_path = f"{OutputGDB}\\Seg{Subsegment}_{Dist}_{output_name}"
-    arcpy.management.CopyFeatures(selection_layer, output_path)
-    print(f"Exported {selection_layer} to {output_path}")
+        output_path = f"{OutputGDB}\\Seg{Subsegment}_{FileNameDist}_{output_name}"
 
-    # Converts each feature class in the output GDB to KMZ
-    arcpy.env.workspace = OutputGDB
+        arcpy.management.CopyFeatures(selection_layer, output_path)
+        layer_name = f"{output_name}_layer"
 
-    for fc in arcpy.ListFeatureClasses():
-        gdb_prefix = f"Seg{Subsegment}_{Dist}"
-    else:
-        output_kmz = os.path.join(f"{out_kmz_file}", fc + ".kml")
-    if fc.startswith(f"{gdb_prefix}"):
-        layer_name = f"{fc}_layer"
-        arcpy.MakeFeatureLayer_management(fc, layer_name)
-        arcpy.conversion.LayerToKML(layer_name,
-                                    output_kmz,
-                                    layer_output_scale=0,
-                                    is_composite="NO_COMPOSITE",
-                                    image_size=1024,
-                                    dpi_of_client=96,
-                                    ignore_zvalue="CLAMPED_TO_GROUND")
+        arcpy.MakeFeatureLayer_management(output_path, layer_name)
+        output_kmz = os.path.join(f"{out_kmz_file}", f"Seg{Subsegment}_{FileNameDist}_{output_name}" + ".kml")
+
+        arcpy.conversion.LayerToKML(
+            layer_name,
+            output_kmz,
+            layer_output_scale=0,
+            is_composite="NO_COMPOSITE",
+            dpi_of_client=96,
+            ignore_zvalue="CLAMPED_TO_GROUND"
+            )
         arcpy.Delete_management(layer_name)
-        print(f"Converted {fc} to KMZ")
