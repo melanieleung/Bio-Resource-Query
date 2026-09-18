@@ -112,10 +112,11 @@ if FederalClip:
 
     for layer, selection_layer in selection_layers.items():
         output_name = input_layers[layer]
-        output_path = f"{OutputGDB}\\Seg{Subsegment}_{FileNameDist}_FederalClip_{output_name}"
+        output_path = f"{OutputGDB}\\Seg{Subsegment}_{Dist}_FederalClip_{output_name}"
+    arcpy.management.CopyFeatures(selection_layer, output_path)
 
-        arcpy.management.CopyFeatures(selection_layer, output_path)
-        layer_name = f"{output_name}_layer"
+    # Converts each feature class in the output GDB to KMZ
+    arcpy.env.workspace = OutputGDB
 
         arcpy.MakeFeatureLayer_management(output_path, layer_name)
         output_kmz = os.path.join(f"{out_kmz_file}", f"Seg{Subsegment}_{FileNameDist}_FederalClip_{output_name}" + ".kml")
@@ -176,20 +177,25 @@ else:
 
     for layer, selection_layer in selection_layers.items():
         output_name = input_layers[layer]
-        output_path = f"{OutputGDB}\\Seg{Subsegment}_{FileNameDist}_{output_name}"
+        output_path = f"{OutputGDB}\\Seg{Subsegment}_{Dist}_{output_name}"
+    arcpy.management.CopyFeatures(selection_layer, output_path)
+    print(f"Exported {selection_layer} to {output_path}")
 
-        arcpy.management.CopyFeatures(selection_layer, output_path)
-        layer_name = f"{output_name}_layer"
+    # Converts each feature class in the output GDB to KMZ
+    arcpy.env.workspace = OutputGDB
 
-        arcpy.MakeFeatureLayer_management(output_path, layer_name)
-        output_kmz = os.path.join(f"{out_kmz_file}", f"Seg{Subsegment}_{FileNameDist}_{output_name}" + ".kml")
-
-        arcpy.conversion.LayerToKML(
-            layer_name,
-            output_kmz,
-            layer_output_scale=0,
-            is_composite="NO_COMPOSITE",
-            dpi_of_client=96,
-            ignore_zvalue="CLAMPED_TO_GROUND"
-            )
+    for fc in arcpy.ListFeatureClasses():
+        gdb_prefix = f"Seg{Subsegment}_{Dist}"
+    else:
+        output_kmz = os.path.join(f"{out_kmz_file}", fc + ".kml")
+    if fc.startswith(f"{gdb_prefix}"):
+        layer_name = f"{fc}_layer"
+        arcpy.MakeFeatureLayer_management(fc, layer_name)
+        arcpy.conversion.LayerToKML(layer_name,
+                                    output_kmz,
+                                    layer_output_scale=0,
+                                    is_composite="NO_COMPOSITE",
+                                    image_size=1024,
+                                    dpi_of_client=96,
+                                    ignore_zvalue="CLAMPED_TO_GROUND")
         arcpy.Delete_management(layer_name)
